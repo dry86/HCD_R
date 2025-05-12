@@ -18,6 +18,8 @@ wandb/
 *.zip
 
 *.jsonl
+*.parquet
+*.arrow
 
 *.txt
 

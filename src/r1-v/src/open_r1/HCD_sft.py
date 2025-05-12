@@ -124,7 +124,7 @@ def convert_example(example):
     thinking = example.get("thinking")
     problem = example.get("problem")
     solution = example.get("solution")
-    image = example.get("image")
+    image = example.get("image_path")
     messages.append({
         "role": "user",
         "content": [
@@ -142,13 +142,23 @@ def convert_example(example):
 
 
 def collate_fn(examples):
+    # print("examples:")
+    # print("examples:")
+    # print("examples:")
+    # print("examples:")
+    # print(examples)
     texts = [
         processor.apply_chat_template( convert_example(example)["messages"], tokenize=False, add_generation_prompt=True)
         for example in examples
     ]
     image_inputs = []
     for example in examples:
-        imgs, vids = process_vision_info(example["messages"])
+        # print("example:")
+        # print("example:")
+        # print("example:")
+        # print("example:")
+        # print(example)
+        imgs, vids = process_vision_info(example["messages"]) # convert_example(example)["messages"]
         image_inputs.append(imgs)
     batch = processor(
         text=texts,
@@ -204,8 +214,15 @@ def main(script_args, training_args, model_args):
     # Load datasets
     ################
 
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-
+    # dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    # dataset = load_dataset(script_args.dataset_name, data_files={'train': 'train.parquet'})
+    # dataset = load_dataset(script_args.dataset_name)
+    dataset = load_dataset("parquet", data_files={'train': script_args.dataset_name})
+    if training_args.eval_strategy != "no":
+        dataset = load_dataset("parquet", data_files={
+            'train': script_args.dataset_name,
+            'test': script_args.dataset_name.replace('train.parquet', 'test.parquet')
+        })
     ################
     # Load tokenizer
     ################
@@ -243,8 +260,8 @@ def main(script_args, training_args, model_args):
         quantization_config=quantization_config,
     )
     # training_args.model_init_kwargs = model_kwargs
-    from transformers import Qwen2VLForConditionalGeneration
-    model = Qwen2VLForConditionalGeneration.from_pretrained(
+    from transformers import Qwen2_5_VLForConditionalGeneration
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_args.model_name_or_path, **model_kwargs
     )
     ############################

@@ -2,11 +2,13 @@ r1_v_path=/newdisk/public/wws/01-AIGC-GPRO/R1-V-main
 cd ${r1_v_path}
 
 # model_path=${r1_v_path}/src/r1-v/output/checkpoint-1004
-model_path=/newdisk/public/wws/00-Model-AIGC/Qwen2-VL-2B-Instruct
+model_path=/newdisk/public/wws/00-Model-AIGC/Qwen2.5-VL-7B-Instruct
+# model_path=/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/data/Qwen2-VL-2B-Instruct
+# model_path=/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/src/r1-v/output/SFT_4o_GRPO_HCD_FHM/checkpoint-1062
 # model_path=/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/src/r1-v/output/checkpoint-1062
 batch_size=4
 # output_path=${r1_v_path}/src/eval/output/FHM_test/eval/res@qwen2vl-2B-checkpoint-2epoch.json
-output_path=${r1_v_path}/src/eval/output/FHM_test/eval/res@qwen2vl-2B-Instruct-test.json
+output_path=${r1_v_path}/src/eval/output/FHM_test/eval/res@qwen2.5-vl-7B-Instruct.json
 prompt_path=${r1_v_path}/src/eval/FHM/FHM_test_seen.jsonl
 gpu_ids=0,1,2,3
 

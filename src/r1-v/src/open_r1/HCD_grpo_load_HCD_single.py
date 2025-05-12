@@ -59,13 +59,12 @@ def accuracy_reward(completions, solution, **kwargs):
     contents = [completion[0]["content"] for completion in completions]
     rewards = []
     images = kwargs['image']
-    image_paths = kwargs.get('image_path', ['unknown_path'] * len(images))  # 获取image_path，如果不存在则使用默认值
-    # print("kwargs:")
-    # print("kwargs:")
-    # print("kwargs:")
-    # print("kwargs: ", kwargs)
+    print("kwargs:")
+    print("kwargs:")
+    print("kwargs:")
+    print("kwargs: ", kwargs)
     current_time = datetime.now().strftime("%d-%H-%M-%S-%f")
-    for i, (image, content, sol) in enumerate(zip(images, contents, solution)):
+    for image, content, sol in zip(images, contents, solution):
         reward = 0.0
         # Try symbolic verification first
         try:
@@ -98,7 +97,6 @@ def accuracy_reward(completions, solution, **kwargs):
             try:
                 with open(log_path, "a", encoding='utf-8') as f:
                     f.write(f"------------- {current_time} Accuracy reward: {reward} -------------\n")
-                    f.write(f"image_path: {image_paths[i]}\n")
                     f.write(f"image: {image}\n")
                     f.write(f"Content: {content}\n")
                     f.write(f"Solution: {sol}\n")
@@ -129,72 +127,49 @@ SYSTEM_PROMPT = (
 
 from datasets import Dataset, DatasetDict
 
-def load_HCD_dataset(jsonl_path, image_prefix=None, num_workers=16):
+def load_HCD_dataset(jsonl_path, image_prefix=None):
     print("[Loading] HCD dataset from: ", jsonl_path)
+    # 准备转换后的数据列表
+    transformed_data = {
+        'image': [],  # 存储图片路径
+        'problem': [],  # 存储问题
+        'solution': []  # 存储标签
+    }
     
-    # 使用分批处理
-    batch_size = 1000
-    dataset = None
+    # 读取jsonl文件
+    from tqdm import tqdm
     
     with open(jsonl_path, 'r') as file:
         lines = file.readlines()
-        total_batches = (len(lines) + batch_size - 1) // batch_size
-        
-        # 创建线程池用于处理批次
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            def process_batch(batch_idx):
-                start_idx = batch_idx * batch_size
-                end_idx = min((batch_idx + 1) * batch_size, len(lines))
-                batch_lines = lines[start_idx:end_idx]
-                
-                # 准备转换后的数据列表
-                transformed_data = {
-                    'image_path': [],  # 添加image_path字段
-                    'image': [],
-                    'problem': [],
-                    'solution': []
-                }
-                
-                # 使用线程池处理图片加载
-                with ThreadPoolExecutor(max_workers=num_workers) as img_executor:
-                    def process_line(line):
-                        entry = json.loads(line)
-                        image_path = os.path.join(image_prefix, entry['img'])
-                        image = Image.open(image_path).convert('RGB')
-                        text = entry['text']
-                        
-                        problem = f"As a harmful-content detection expert, you are presented with a sample containing an image and the overlaid text \"{text}\". Considering both the visual and textual information, what is your judgment (harmful / harmless)?"
-                        
-                        label = entry['label']
-                        solution = "<answer> harmless </answer>" if label == 0 else "<answer> harmful </answer>"
-                        
-                        return (image_path, image, problem, solution)
-                    
-                    results = list(img_executor.map(process_line, batch_lines))
-                
-                # 整理结果
-                for img_path, img, prob, sol in results:
-                    transformed_data['image_path'].append(img_path)
-                    transformed_data['image'].append(img)
-                    transformed_data['problem'].append(prob)
-                    transformed_data['solution'].append(sol)
-                
-                # 创建当前批次的dataset
-                return Dataset.from_dict(transformed_data)
+        for line in tqdm(lines, desc="loading dataset"):
+            # 解析每一行json数据
+            entry = json.loads(line)
             
-            # 并行处理所有批次
-            batch_datasets = list(tqdm(
-                executor.map(process_batch, range(total_batches)),
-                total=total_batches,
-                desc="Processing batches"
-            ))
+            # 获取图片路径
+            image_path = os.path.join(image_prefix, entry['img'])
+            image = Image.open(image_path).convert('RGB')
+            text = entry['text']
             
-            # 合并所有批次的数据集
-            dataset = batch_datasets[0]
-            for batch_dataset in tqdm(batch_datasets[1:], desc="Merging datasets"):
-                dataset = concatenate_datasets([dataset, batch_dataset])
+            # 构建问题模板
+            problem = (
+                f"As a harmful-content detection expert, you are presented with a sample containing an image and the overlaid text \"{text}\". Considering both the visual and textual information, what is your judgment (harmful / harmless)?"
+            ) 
+            # 构建解决方案（根据label值）
+            label = entry['label']
+            if label == 0:
+                solution = "<answer> harmless </answer>"
+            else:  # label == 1
+                solution = "<answer> harmful </answer>"
+
+            # 添加到transformed_data
+            transformed_data['image'].append(image)
+            transformed_data['problem'].append(problem)
+            transformed_data['solution'].append(solution)
     
-    dataset_dict = DatasetDict({'train': dataset})
+    # 创建dataset
+    dataset = Dataset.from_dict(transformed_data)
+    dataset_dict = DatasetDict({'train': dataset})  # 只包含训练集？
+
     print("[Finished] loaded HCD dataset from: ", jsonl_path)
     
     return dataset_dict
@@ -218,16 +193,35 @@ def main(script_args, training_args, model_args):
             ],
         }
 
+    # def make_conversation_image(example):
+    #     return {
+    #         "prompt": [
+    #             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+    #             {
+    #                 "role": "user",
+    #                 "content": [
+    #                     {"type": "image"},
+    #                     {"type": "text", "text": example["problem"]},
+    #                 ],
+    #             },
+    #         ],
+    #     }
+
     QUESTION_TEMPLATE = "{Question}  Output the thinking process in <think> </think> and final judgment (harmful / harmless) in <answer> </answer> tags."
 
     def make_conversation_image(example):
+        # 确保输入序列长度一致
+        max_length = 400  # 设置一个合适的最大长度
+        
         return {
             "prompt": [
                 {
                     "role": "user",
                     "content": [
                         {"type": "image"},
-                        {"type": "text", "text": QUESTION_TEMPLATE.format(Question=example["problem"])},
+                        {"type": "text", "text": QUESTION_TEMPLATE.format(
+                            Question=example["problem"][:max_length]
+                        )},
                     ],
                 },
             ],
