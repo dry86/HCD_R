@@ -1,9 +1,10 @@
 cd src/r1-v
 
-DATA_PATH=/newdisk/public/wws/00-Dataset-AIGC/FHM_new/train.jsonl
+# DATA_PATH=/newdisk/public/wws/00-Dataset-AIGC/FHM_new/train.jsonl
+DATA_PATH=/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/src/eval/FHM/train_wrong_items.jsonl
 
 export DEBUG_MODE="true" # Enable Debug if you want to see the rollout of model during RL
-export LOG_PATH="./debug_log_qwen2vl_SFT_4o_GRPO_HCD_FHM_20250511.txt"
+export LOG_PATH="./debug_log_qwen2vl_SFT_4o_GRPO_HCD_FHM_wrong_items_20250515.txt"
 
 # 设置环境变量以优化内存使用
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -14,7 +15,7 @@ torchrun --nproc_per_node="4" \
     --master_addr="127.0.0.1" \
     --master_port="12345" \
     src/open_r1/HCD_grpo.py \
-    --output_dir ./output/SFT_4o_GRPO_HCD_FHM \
+    --output_dir ./output/qwen2vl_SFT_4o_GRPO_HCD_FHM_0515 \
     --model_name_or_path /newdisk/public/wws/01-AIGC-GPRO/R1-V-main/data/Qwen2-VL-2B-Instruct-HCD-SFT-GPT4o \
     --dataset_name ${DATA_PATH} \
     --deepspeed local_scripts/zero3.json \
@@ -29,7 +30,7 @@ torchrun --nproc_per_node="4" \
     --attn_implementation flash_attention_2 \
     --max_pixels 200704 \
     --num_train_epochs 2 \
-    --run_name Qwen2-VL-2B-SFT-GRPO-HCD-FHM-train \
+    --run_name qwen2vl-2B-SFT-GRPO-HCD-FHM-wrong-items-0515 \
     --save_steps 500 \
     --save_only_model true \
     --num_generations 8   # number of outputs G in grpo, reduce it would lead to faster training and smaller memory cost but higher variance  
