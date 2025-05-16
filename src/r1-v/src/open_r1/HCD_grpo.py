@@ -57,6 +57,16 @@ class GRPOScriptArguments(ScriptArguments):
 def accuracy_reward(completions, solution, **kwargs):
     """Reward function that checks if the completion is correct using either symbolic verification or exact string matching."""
     contents = [completion[0]["content"] for completion in completions]
+    # # 将完整的completion写入日志以便调试
+    # if os.getenv("DEBUG_MODE") == "true":
+    #     log_path = os.getenv("LOG_PATH")
+    #     current_time = datetime.now().strftime("%d-%H-%M-%S-%f")
+    #     try:
+    #         with open(log_path, "a", encoding='utf-8') as f:
+    #             f.write(f"------------- {current_time} 完整的completion -------------\n")
+    #             f.write(f"completions: {json.dumps(completions, ensure_ascii=False, indent=2)}\n")
+    #     except Exception as e:
+    #         print(f"Warning: Failed to write completions to log file: {e}")
     rewards = []
     images = kwargs['image']
     image_paths = kwargs.get('image_path', ['unknown_path'] * len(images))  # 获取image_path，如果不存在则使用默认值
@@ -83,8 +93,8 @@ def accuracy_reward(completions, solution, **kwargs):
                 ground_truth = sol_match.group(1).strip() if sol_match else sol.strip()
                 
                 # Extract answer from content if it has think/answer tags
-                content_match = re.search(r'<answer>(.*?)</answer>', content)
-                student_answer = content_match.group(1).strip() if content_match else content.strip()
+                matches = re.findall(r'<answer>(.*?)</answer>', content, re.DOTALL)
+                student_answer = next((match.strip() for match in matches if match.strip()), content.strip())
                 
                 # Compare the extracted answers
                 if student_answer == ground_truth:
@@ -218,7 +228,7 @@ def main(script_args, training_args, model_args):
             ],
         }
 
-    QUESTION_TEMPLATE = "{Question}  Output the thinking process in <think> </think> and final judgment (harmful / harmless) in <answer> </answer> tags."
+    QUESTION_TEMPLATE = "{Question} Only output the thinking process in <think> </think> and final judgment (harmful / harmless) in <answer> </answer> tags."
 
     def make_conversation_image(example):
         return {
