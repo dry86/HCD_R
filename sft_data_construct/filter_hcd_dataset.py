@@ -40,8 +40,8 @@ def filter_dataset(input_path, output_path):
 
 def main():
     # 设置输入输出路径
-    input_path = "/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset/train.parquet"
-    output_path = "/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset"
+    input_path = "/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset_v3/train_v3.parquet"
+    output_path = "/newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset_v3_gt"
     
     # 过滤数据集
     filter_dataset(input_path, output_path)
