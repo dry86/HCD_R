@@ -4,7 +4,7 @@ model_revision: main
 torch_dtype: bfloat16
 
 # Data training arguments
-dataset_name: /newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset_gt/train.parquet
+dataset_name: /newdisk/public/wws/01-AIGC-GPRO/R1-V-main/sft_data_construct/gpt4o_hcd_sft_dataset_v3/merged_correct_samples-409.parquet
 dataset_configs:
 - all
 preprocessing_num_workers: 8
@@ -17,7 +17,7 @@ gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen2-VL-2B-Instruct-HCD-SFT-GPT4o
+hub_model_id: Qwen2-VL-2B-Instruct-HCD-SFT-GPT4o-v3
 hub_strategy: every_save
 learning_rate: 2.0e-05
 log_level: info
@@ -28,7 +28,7 @@ packing: true
 max_seq_length: 4096
 max_steps: -1
 num_train_epochs: 10
-output_dir: data/Qwen2-VL-2B-Instruct-HCD-SFT-GPT4o
+output_dir: data/Qwen2-VL-2B-Instruct-HCD-SFT-GPT4o-v3-10epochs
 overwrite_output_dir: true
 per_device_eval_batch_size: 2
 per_device_train_batch_size: 2
