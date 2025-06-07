@@ -38,14 +38,14 @@ accelerate launch --config_file=configs/zero3.yaml src/open_r1/sft.py \
 import logging
 import os
 import sys
-
+from rich import print
 import datasets
 from dataclasses import dataclass, field
 from typing import Optional
 import torch
 import transformers
 from datasets import load_dataset
-from transformers import AutoTokenizer, set_seed, AutoProcessor
+from transformers import AutoTokenizer, set_seed, AutoProcessor, TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
 import trl
 from trl import (
@@ -175,6 +175,33 @@ def collate_fn(examples):
     return batch
 
 
+class LossThresholdCallback(TrainerCallback):
+    def __init__(self, loss_threshold: float, output_dir: str):
+        self.loss_threshold = loss_threshold
+        self.output_dir = output_dir
+        self.best_loss = float('inf')
+        
+        
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs is not None and "loss" in logs:
+            current_loss = logs["loss"]
+            if current_loss < self.loss_threshold and current_loss < self.best_loss:
+                self.best_loss = current_loss
+                logger.info(f"Loss {current_loss} below threshold {self.loss_threshold}, saving model...")
+                # 保存模型
+                try:
+                    control.should_save = True
+                    logger.info(f"Successfully saved model with loss {current_loss:.4f}")
+                except Exception as e:
+                    logger.error(f"Error saving model: {str(e)}")
+        else:
+            print("logs:")
+            print(logs)
+            print("args:")
+            print(args)
+
+
+
 def main(script_args, training_args, model_args):
     # Set seed for reproducibility
     set_seed(training_args.seed)
@@ -271,6 +298,13 @@ def main(script_args, training_args, model_args):
         "skip_prepare_dataset": True,
     }
     training_args.remove_unused_columns = False
+    
+    # 添加基于loss阈值的回调
+    loss_threshold_callback = LossThresholdCallback(
+        loss_threshold=script_args.loss_threshold if hasattr(script_args, "loss_threshold") else 0.3,
+        output_dir=training_args.output_dir
+    )
+    
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -278,7 +312,8 @@ def main(script_args, training_args, model_args):
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         processing_class=processor.tokenizer,
         data_collator=collate_fn,
-        peft_config=get_peft_config(model_args)
+        peft_config=get_peft_config(model_args),
+        callbacks=[loss_threshold_callback]  # 添加回调
     )
 
     ###############
